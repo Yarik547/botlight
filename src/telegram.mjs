@@ -1,81 +1,50 @@
-import TelegramBot from "node-telegram-bot-api";
-import crypto from "crypto";
+import TelegramBot from 'node-telegram-bot-api';
+import crypto from 'crypto';
 
 export function createBot({ token, mode }) {
-	return new TelegramBot(token, { polling: mode === "polling" });
+  return new TelegramBot(token, { polling: mode === 'polling' });
 }
 
 export function mainKeyboard() {
-	return {
-		reply_markup: {
-			inline_keyboard: [
-				[{ text: "Графік зараз", callback_data: "NOW_CHART" }],
-			],
-		},
-	};
+  return {
+    reply_markup: {
+      inline_keyboard: [[
+        { text: '📊 Графік зараз', callback_data: 'NOW_CHART' }
+      ]]
+    }
+  };
 }
 
 export function makeShareUrl(botUsername) {
-	return (
-		"https://t.me/share/url?url=" +
-		encodeURIComponent(`https://t.me/${botUsername}`) +
-		"&text=" +
-		encodeURIComponent("Графік світла та сповіщення — LightWatcher")
-	);
+  return `https://t.me/share/url?url=${encodeURIComponent(`https://t.me/${botUsername}`)}&text=${encodeURIComponent('LightWatcher')}`;
 }
 
 export function makeCaption(kind, shareUrl) {
-	const phrases = [
-		"Свіжак під’їхав.",
-		"Оновлення з мережі.",
-		"Тримаю в курсі.",
-		"Актуально на зараз.",
-		"Лови графік.",
-		"Ситуація на зараз.",
-	];
-	const p = phrases[Math.floor(Math.random() * phrases.length)];
-
-	let head = p;
-	if (kind === "startup") head = `🚀 Старт. ${p}`;
-	else if (kind === "now_button") head = `📍 На запит. ${p}`;
-	else if (kind === "now_cmd") head = `⌨️ /now. ${p}`;
-	else if (kind === "changed") head = `🔔 Є зміни. ${p}`;
-
-	return `${head}\n\n🔗 <a href="${shareUrl}">Поширити бота</a>`;
-}
-
-export function bust(u) {
-	return u + (u.includes("?") ? "&" : "?") + "t=" + Date.now();
-}
-
-export async function downloadImage(url) {
-	const res = await fetch(url, {
-		headers: {
-			"User-Agent": "Mozilla/5.0",
-			Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-			"Cache-Control": "no-cache",
-			Pragma: "no-cache",
-		},
-		redirect: "follow",
-	});
-	if (!res.ok) throw new Error(`Image fetch failed: ${res.status}`);
-	return Buffer.from(await res.arrayBuffer());
+  const phrases = [
+    'Оновлений графік відключень ⚡',
+    'Свіжий графік по групах 1.1-6.2',
+    'Чому немає світла? Дивись графіку!'
+  ];
+  const p = phrases[Math.floor(Math.random() * phrases.length)];
+  let head = p;
+  if (kind === 'startup') head = `👋 Підключено! ${p}`;
+  else if (kind === 'now_button') head = `📱 По кнопці: ${p}`;
+  else if (kind === 'changed') head = `🆕 ЗМІНИЛОСЯ! ${p}`;
+  return `${head}<br><a href="${shareUrl}">Поділитись</a>`;
 }
 
 export function sha256(buf) {
-	return crypto.createHash("sha256").update(buf).digest("hex");
+  return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
 export async function sendPhoto(bot, chatId, img, caption, keyboard) {
-	await bot.sendPhoto(
-		chatId,
-		img,
-		{
-			caption,
-			parse_mode: "HTML",
-			disable_web_page_preview: true,
-			...keyboard,
-		},
-		{ filename: "chart.png", contentType: "image/png" },
-	);
+  await bot.sendPhoto(chatId, img, {
+    caption,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true
+  }, {
+    filename: 'chart.png',
+    contentType: 'image/png'  // ✅ ФІКС DEPRECATION WARNING!
+  });
+  // keyboard не потрібен для photo, тільки message
 }
