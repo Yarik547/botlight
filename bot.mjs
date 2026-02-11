@@ -60,10 +60,10 @@ function makeCaption(kind) {
 
 	const p = phrases[Math.floor(Math.random() * phrases.length)];
 
-	if (kind === "startup") return `🚀 Старт. ${p}\n⏱ ${ts}`;
-	if (kind === "now_button") return `📍 На запит. ${p}\n⏱ ${ts}`;
-	if (kind === "now_cmd") return `⌨️ /now. ${p}\n⏱ ${ts}`;
-	if (kind === "changed") return `🔔 Є зміни. ${p}\n⏱ ${ts}`;
+	// if (kind === "startup") return `🚀 Старт. ${p}\n⏱ ${ts}`;
+	// if (kind === "now_button") return `📍 На запит. ${p}\n⏱ ${ts}`;
+	// if (kind === "now_cmd") return `⌨️ /now. ${p}\n⏱ ${ts}`;
+	// if (kind === "changed") return `🔔 Є зміни. ${p}\n⏱ ${ts}`;
 	return `${p}\n⏱ ${ts}`;
 }
 
