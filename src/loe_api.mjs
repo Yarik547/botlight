@@ -1,38 +1,49 @@
-const DEFAULT_HEADERS = {
-	"User-Agent":
-		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-	Accept: "application/ld+json, application/json;q=0.9, */*;q=0.8",
-};
-
-async function fetchJson(url) {
-	const res = await fetch(url, {
-		headers: DEFAULT_HEADERS,
-		redirect: "follow",
-	});
-	if (!res.ok) throw new Error(`API failed ${res.status} for ${url}`);
-	return await res.json();
-}
-
 export async function getTodayRawMobileHtml({ apiBase }) {
-	const url = `${apiBase}/menus?type=photo-grafic`;
-	const data = await fetchJson(url);
+  const url = `${apiBase}/apimenus?type=photo-grafic`;
 
-	const items = data?.["hydra:member"];
-	if (!Array.isArray(items) || items.length === 0) {
-		throw new Error("No hydra:member in photo-grafic response");
-	}
+  const res = await fetch(url, {
+    headers: {
+      Accept: "application/ld+json", // гарантує Hydra формат
+    },
+  });
 
-	const menu = items[0];
-	const menuItems = menu?.menuItems;
-	if (!Array.isArray(menuItems) || menuItems.length === 0) {
-		throw new Error("No menuItems in photo-grafic menu");
-	}
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
 
-	const today =
-		menuItems.find((x) => (x?.name ?? "").toLowerCase() === "today") ??
-		menuItems[0];
-	const html = today?.rawMobileHtml || today?.rawHtml;
+  const data = await res.json();
 
-	if (!html) throw new Error("No rawMobileHtml/rawHtml in Today menuItem");
-	return html;
+  // Дебаг для Railway
+  console.log("[loe_api] status:", res.status);
+  console.log("[loe_api] content-type:", res.headers.get("content-type"));
+  console.log("[loe_api] data keys:", Object.keys(data));
+  console.log("[loe_api] has hydra:member?", !!data["hydra:member"]);
+
+  // Гнучкий парсинг: hydra:member або member
+  const members = data["hydra:member"] ?? data.member;
+  if (!Array.isArray(members) || members.length === 0) {
+    console.error("[loe_api] full data preview:", JSON.stringify(data, null, 2).slice(0, 1000));
+    throw new Error("No hydra:member/member array in photo-grafic response");
+  }
+
+  // Шукаємо Menu з type=photo-grafic
+  const photoMenu = members.find(m => m.type === "photo-grafic");
+  if (!photoMenu) {
+    throw new Error("No photo-grafic menu found");
+  }
+
+  // Шукаємо Today елемент (orders=0) у menuItems
+  const todayItem = photoMenu.menuItems?.find(item => item.name === "Today" || item.orders === 0);
+  if (!todayItem) {
+    throw new Error("No 'Today' item in photo-grafic menu");
+  }
+
+  // Повертаємо rawMobileHtml (або rawHtml якщо mobile нема)
+  const rawMobile = todayItem.rawMobileHtml ?? todayItem.rawHtml;
+  if (!rawMobile) {
+    throw new Error("No rawMobileHtml/rawHtml in Today item");
+  }
+
+  console.log("[loe_api] found Today rawMobileHtml length:", rawMobile.length);
+  return rawMobile;
 }
