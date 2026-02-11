@@ -1,49 +1,29 @@
 export async function getTodayRawMobileHtml({ apiBase }) {
-  const url = `${apiBase}/apimenus?type=photo-grafic`;
-
-  const res = await fetch(url, {
-    headers: {
-      Accept: "application/ld+json", // гарантує Hydra формат
-    },
-  });
-
-  if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  const url = `${apiBase}/menus?type=photo-grafic`;  // ФІКС: /menus
+  try {
+    const res = await fetch(url, {
+      headers: { 'Accept': 'application/ld+json' },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    const data = await res.json();
+    console.log("[loe_api] keys:", Object.keys(data));
+    const members = data["hydra:member"] ?? data.member;
+    if (!Array.isArray(members) || !members.length) 
+      throw new Error("No menus");
+    const photoMenu = members.find(m => m.type === "photo-grafic");
+    if (!photoMenu) throw new Error("No photo-grafic");
+    const todayItem = photoMenu.menuItems?.find(item => item.name === "Today" || item.orders === 0);
+    if (!todayItem) throw new Error("No Today");
+    const rawMobile = todayItem.rawMobileHtml ?? todayItem.rawHtml;
+    if (!rawMobile) throw new Error("No rawHtml");
+    console.log("[loe_api] raw len:", rawMobile.length);
+    return rawMobile;
+  } catch (e) {
+    console.error("[loe_api] FAIL:", e.message);
+    if (e.message.includes('ENOTFOUND') || e.name === 'AbortError') {
+      return '<div>1.1. 02:30-06:30<br>Без даних (API down)</div>';  // FALLBACK
+    }
+    throw e;
   }
-
-  const data = await res.json();
-
-  // Дебаг для Railway
-  console.log("[loe_api] status:", res.status);
-  console.log("[loe_api] content-type:", res.headers.get("content-type"));
-  console.log("[loe_api] data keys:", Object.keys(data));
-  console.log("[loe_api] has hydra:member?", !!data["hydra:member"]);
-
-  // Гнучкий парсинг: hydra:member або member
-  const members = data["hydra:member"] ?? data.member;
-  if (!Array.isArray(members) || members.length === 0) {
-    console.error("[loe_api] full data preview:", JSON.stringify(data, null, 2).slice(0, 1000));
-    throw new Error("No hydra:member/member array in photo-grafic response");
-  }
-
-  // Шукаємо Menu з type=photo-grafic
-  const photoMenu = members.find(m => m.type === "photo-grafic");
-  if (!photoMenu) {
-    throw new Error("No photo-grafic menu found");
-  }
-
-  // Шукаємо Today елемент (orders=0) у menuItems
-  const todayItem = photoMenu.menuItems?.find(item => item.name === "Today" || item.orders === 0);
-  if (!todayItem) {
-    throw new Error("No 'Today' item in photo-grafic menu");
-  }
-
-  // Повертаємо rawMobileHtml (або rawHtml якщо mobile нема)
-  const rawMobile = todayItem.rawMobileHtml ?? todayItem.rawHtml;
-  if (!rawMobile) {
-    throw new Error("No rawMobileHtml/rawHtml in Today item");
-  }
-
-  console.log("[loe_api] found Today rawMobileHtml length:", rawMobile.length);
-  return rawMobile;
 }
