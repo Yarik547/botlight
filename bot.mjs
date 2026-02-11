@@ -6,190 +6,193 @@ import express from "express";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const IMAGE_URL = process.env.IMAGE_URL;
-const INTERVAL_SECONDS = Number(process.env.INTERVAL_SECONDS ?? 1800);
-const PUBLIC_URL = process.env.PUBLIC_URL; // напр. https://xxxxx.up.railway.app
+const PUBLIC_URL = process.env.PUBLIC_URL; // https://xxxxx.up.railway.app
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET; // optional
-const STATE_FILE = "./state.json";
-const shareUrl =
-  "https://t.me/share/url?url=" + encodeURIComponent("https://t.me/LightWatcherBot") +
-  "&text=" + encodeURIComponent("Графік світла та сповіщення — LightWatcher");
+const INTERVAL_SECONDS = Number(process.env.INTERVAL_SECONDS ?? 1800);
+const BOT_USERNAME = process.env.BOT_USERNAME ?? "LightWatcherBot";
 
 if (!BOT_TOKEN) throw new Error("Missing BOT_TOKEN in env");
 if (!IMAGE_URL) throw new Error("Missing IMAGE_URL in env");
 if (!PUBLIC_URL) throw new Error("Missing PUBLIC_URL in env");
 
+const STATE_FILE = "./state.json";
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
 let state = { chatId: null, lastHash: null };
 
 if (fs.existsSync(STATE_FILE)) {
-	try {
-		state = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
-	} catch {}
+  try {
+    state = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
+  } catch {}
 }
 
 function saveState() {
-	fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
 }
 
 function mainKeyboard() {
-	return {
-		reply_markup: {
-			inline_keyboard: [
-				[{ text: "Графік зараз", callback_data: "NOW_CHART" }],
-			],
-		},
-	};
+  return {
+    reply_markup: {
+      inline_keyboard: [[{ text: "Графік зараз", callback_data: "NOW_CHART" }]],
+    },
+  };
 }
 
-function pad2(n) {
-	return String(n).padStart(2, "0");
-}
+const shareUrl =
+  "https://t.me/share/url?url=" +
+  encodeURIComponent(`https://t.me/${BOT_USERNAME}`) +
+  "&text=" +
+  encodeURIComponent("Графік світла та сповіщення — LightWatcher");
 
 function makeCaption(kind) {
-	const phrases = [
-		"Свіжак під’їхав.",
-		"Оновлення з мережі.",
-		"Тримаю в курсі.",
-		"Актуально на зараз.",
-		"Лови графік.",
-		"Перевірка пройшла успішно.",
-		"Ситуація на зараз.",
-		"Пульс мережі тут.",
-	];
+  const phrases = [
+    "Свіжак під’їхав.",
+    "Оновлення з мережі.",
+    "Тримаю в курсі.",
+    "Актуально на зараз.",
+    "Лови графік.",
+    "Ситуація на зараз.",
+  ];
+  const p = phrases[Math.floor(Math.random() * phrases.length)];
 
-	const p = phrases[Math.floor(Math.random() * phrases.length)];
+  let head = p;
+  if (kind === "startup") head = `🚀 Старт. ${p}`;
+  else if (kind === "now_button") head = `📍 На запит. ${p}`;
+  else if (kind === "now_cmd") head = `⌨️ /now. ${p}`;
+  else if (kind === "changed") head = `🔔 Є зміни. ${p}`;
 
-	if (kind === "startup") return `🚀 Старт. ${p}`;
-	if (kind === "now_button") return `📍 На запит. ${p}`;
-	if (kind === "now_cmd") return `⌨️ /now. ${p}`;
-	if (kind === "changed") return `🔔 Є зміни. ${p}`;
-	return `${p}\n<a href="${shareUrl}">Поширити бота</a>`;
+  return `${head}\n<a href="${shareUrl}">Поширити бота</a>`;
 }
 
 async function downloadImage(url) {
-	const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-	if (!res.ok) throw new Error(`Image fetch failed: ${res.status}`);
-	return Buffer.from(await res.arrayBuffer());
+  const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+  if (!res.ok) throw new Error(`Image fetch failed: ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
 }
 
 function sha256(buf) {
-	return crypto.createHash("sha256").update(buf).digest("hex");
+  return crypto.createHash("sha256").update(buf).digest("hex");
 }
 
-async function sendChart(chatId, caption) {
-	const img = await downloadImage(IMAGE_URL);
-	const h = sha256(img);
+async function sendChart(chatId, captionKind) {
+  const img = await downloadImage(IMAGE_URL);
+  const h = sha256(img);
 
-	await bot.sendPhoto(
-		chatId,
-		img,
-		{ caption, ...mainKeyboard() },
-		{ filename: "chart.png", contentType: "image/png" },
-	);
+  await bot.sendPhoto(
+    chatId,
+    img,
+    {
+      caption: makeCaption(captionKind),
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      ...mainKeyboard(),
+    },
+    { filename: "chart.png", contentType: "image/png" },
+  );
 
-	return h;
+  return h;
 }
 
 async function sendCurrentChart(captionKind = "startup") {
-	if (!state.chatId) return;
-	const h = await sendChart(state.chatId, makeCaption(captionKind));
-	state.lastHash = h;
-	saveState();
+  if (!state.chatId) return;
+  const h = await sendChart(state.chatId, captionKind);
+  state.lastHash = h;
+  saveState();
 }
 
 async function tick() {
-	if (!state.chatId) return;
+  if (!state.chatId) return;
 
-	const img = await downloadImage(IMAGE_URL);
-	const h = sha256(img);
+  const img = await downloadImage(IMAGE_URL);
+  const h = sha256(img);
 
-	if (h !== state.lastHash) {
-		await bot.sendPhoto(
-			state.chatId,
-			img,
-			{ caption: makeCaption("changed"), ...mainKeyboard() },
-			{ filename: "chart.png", contentType: "image/png" },
-		);
-		state.lastHash = h;
-		saveState();
-	}
+  if (h !== state.lastHash) {
+    await bot.sendPhoto(
+      state.chatId,
+      img,
+      {
+        caption: makeCaption("changed"),
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        ...mainKeyboard(),
+      },
+      { filename: "chart.png", contentType: "image/png" },
+    );
+
+    state.lastHash = h;
+    saveState();
+  }
 }
 
-// handlers (те саме що було)
+// Commands
 bot.onText(/\/start/, async (msg) => {
-	state.chatId = msg.chat.id;
-	saveState();
+  state.chatId = msg.chat.id;
+  saveState();
 
-	await bot.sendMessage(
-		state.chatId,
-		"Підключено. Надсилаю графік зараз і далі - тільки коли він зміниться.",
-		mainKeyboard(),
-	);
+  await bot.sendMessage(
+    state.chatId,
+    `Підключено ✅\nНадсилаю графік зараз і далі — тільки коли він зміниться.\n\nБот: https://t.me/${BOT_USERNAME}`,
+    { disable_web_page_preview: true, ...mainKeyboard() },
+  );
 
-	await sendCurrentChart("startup");
+  await sendCurrentChart("startup");
 });
 
 bot.onText(/\/now/, async (msg) => {
-	state.chatId = msg.chat.id;
-	saveState();
-	await sendChart(state.chatId, makeCaption("now_cmd"));
+  state.chatId = msg.chat.id;
+  saveState();
+  await sendChart(state.chatId, "now_cmd");
 });
 
 bot.onText(/\/status/, async (msg) => {
-	const chatId = msg.chat.id;
-	await bot.sendMessage(
-		chatId,
-		`chatId: ${state.chatId ?? "не заданий"}\ninterval: ${INTERVAL_SECONDS}s\nurl: ${IMAGE_URL}`,
-		mainKeyboard(),
-	);
+  const chatId = msg.chat.id;
+  await bot.sendMessage(
+    chatId,
+    `chatId: ${state.chatId ?? "не заданий"}\ninterval: ${INTERVAL_SECONDS}s\nurl: ${IMAGE_URL}`,
+    mainKeyboard(),
+  );
 });
 
 bot.on("callback_query", async (q) => {
-	const chatId = q.message?.chat?.id;
-	if (!chatId) return;
+  const chatId = q.message?.chat?.id;
+  if (!chatId) return;
 
-	await bot.answerCallbackQuery(q.id).catch(() => {});
+  await bot.answerCallbackQuery(q.id).catch(() => {});
 
-	if (q.data === "NOW_CHART") {
-		state.chatId = chatId;
-		saveState();
-		await sendChart(chatId, makeCaption("now_button"));
-	}
+  if (q.data === "NOW_CHART") {
+    state.chatId = chatId;
+    saveState();
+    await sendChart(chatId, "now_button");
+  }
 });
 
-// Express webhook server
+// Webhook server (Express)
 const app = express();
 app.use(express.json());
 
 const webhookPath = `/webhook/${BOT_TOKEN}`;
 
-// optional: verify secret header
 app.post(webhookPath, (req, res) => {
-	if (WEBHOOK_SECRET) {
-		const header = req.get("X-Telegram-Bot-Api-Secret-Token");
-		if (header !== WEBHOOK_SECRET) return res.sendStatus(401);
-	}
-
-	bot.processUpdate(req.body);
-	res.sendStatus(200);
+  if (WEBHOOK_SECRET) {
+    const header = req.get("X-Telegram-Bot-Api-Secret-Token");
+    if (header !== WEBHOOK_SECRET) return res.sendStatus(401);
+  }
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
 });
 
-// healthcheck
 app.get("/", (req, res) => res.status(200).send("ok"));
 
 const port = Number(process.env.PORT ?? 3000);
 app.listen(port, async () => {
-	const webhookUrl = `${PUBLIC_URL}${webhookPath}`;
+  const webhookUrl = `${PUBLIC_URL}${webhookPath}`;
+  const opts = WEBHOOK_SECRET ? { secret_token: WEBHOOK_SECRET } : undefined;
 
-	// setWebhook: Telegram буде слати апдейти сюди [web:492]
-	const opts = WEBHOOK_SECRET ? { secret_token: WEBHOOK_SECRET } : undefined;
-	await bot.setWebHook(webhookUrl, opts);
-
-	console.log("Webhook set to:", webhookUrl);
+  await bot.setWebHook(webhookUrl, opts);
+  console.log("Webhook set to:", webhookUrl);
 });
 
 // periodic check
 setInterval(() => {
-	tick().catch((e) => console.error("tick error:", e));
+  tick().catch((e) => console.error("tick error:", e));
 }, INTERVAL_SECONDS * 1000);
