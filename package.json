@@ -1,9 +1,7 @@
 {
 	"name": "lightwatcher",
 	"type": "module",
-	"scripts": {
-		"start": "node index.mjs"
-	},
+	"scripts": { "start": "node index.mjs" },
 	"dependencies": {
 		"canvas": "^3.2.0",
 		"dotenv": "^17.2.4",
