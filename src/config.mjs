@@ -9,4 +9,4 @@ export const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 export const CHAT_ID = process.env.CHAT_ID;
 
 if (!BOT_TOKEN) throw new Error("Missing BOT_TOKEN");
-if (MODE === "webhook" && !PUBLIC_URL) throw new Error("Missing PUBLIC_URL");[file:3]
+if (MODE === "webhook" && !PUBLIC_URL) throw new Error("Missing PUBLIC_URL")
