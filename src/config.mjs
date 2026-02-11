@@ -1,12 +1,20 @@
-import "dotenv/config";
-export const MODE = process.env.MODE ?? "polling";  // polling для тестів
-export const BOT_TOKEN = process.env.BOT_TOKEN;
-export const BOT_USERNAME = process.env.BOT_USERNAME ?? "LightWatcherBot";
-export const API_BASE = process.env.APIBASE ?? "https://api.loe.lviv.ua/api";
-export const INTERVAL_SECONDS = Number(process.env.INTERVAL_SECONDS ?? 1800);
-export const PUBLIC_URL = process.env.PUBLIC_URL;
-export const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
-export const CHAT_ID = process.env.CHAT_ID;
+export function getEnv(name, { required = true, fallback = undefined } = {}) {
+	const v = process.env[name];
+	if (v && String(v).trim() !== "") return v;
+	if (!required) return fallback;
+	throw new Error(`Missing env var: ${name}`);
+}
 
-if (!BOT_TOKEN) throw new Error("Missing BOT_TOKEN");
-if (MODE === "webhook" && !PUBLIC_URL) throw new Error("Missing PUBLIC_URL")
+export function getEnvInt(
+	name,
+	{ required = true, fallback = undefined } = {},
+) {
+	const raw = process.env[name];
+	if (raw && String(raw).trim() !== "") {
+		const n = Number.parseInt(raw, 10);
+		if (Number.isFinite(n)) return n;
+		throw new Error(`Env var ${name} is not an int: ${raw}`);
+	}
+	if (!required) return fallback;
+	throw new Error(`Missing env var: ${name}`);
+}

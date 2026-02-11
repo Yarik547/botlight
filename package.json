@@ -1,11 +1,14 @@
 {
-	"name": "lightwatcher",
+	"name": "loe-telegram-bot",
+	"version": "1.0.0",
 	"type": "module",
-	"scripts": { "start": "node index.mjs" },
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"start": "node src/index.mjs"
+	},
 	"dependencies": {
-		"canvas": "^3.2.0",
-		"dotenv": "^17.2.4",
-		"express": "^4.19.2",
-		"node-telegram-bot-api": "^0.67.0"
+		"node-telegram-bot-api": "^0.66.0"
 	}
 }
