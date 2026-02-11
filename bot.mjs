@@ -2,20 +2,22 @@ import "dotenv/config";
 import TelegramBot from "node-telegram-bot-api";
 import crypto from "crypto";
 import fs from "fs";
+import express from "express";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const IMAGE_URL = process.env.IMAGE_URL;
 const INTERVAL_SECONDS = Number(process.env.INTERVAL_SECONDS ?? 1800);
+const PUBLIC_URL = process.env.PUBLIC_URL; // напр. https://xxxxx.up.railway.app
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET; // optional
 const STATE_FILE = "./state.json";
 
 if (!BOT_TOKEN) throw new Error("Missing BOT_TOKEN in env");
 if (!IMAGE_URL) throw new Error("Missing IMAGE_URL in env");
+if (!PUBLIC_URL) throw new Error("Missing PUBLIC_URL in env");
 
-const bot = new TelegramBot(BOT_TOKEN, {
-	polling: { params: { allowed_updates: ["message", "callback_query"] } },
-});
+const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-let state = { chatId: null, lastHash: null, lastUpdateId: 0 };
+let state = { chatId: null, lastHash: null };
 
 if (fs.existsSync(STATE_FILE)) {
 	try {
@@ -114,46 +116,8 @@ async function tick() {
 	}
 }
 
-/**
- * Дедуплікація апдейтів.
- * update_id — це інкрементний id апдейта, і якщо після рестарту/overlap апдейт приїде ще раз,
- * ми просто ігноруємо його (обробляємо тільки якщо він новіший за збережений). [web:154]
- */
-function shouldProcessUpdate(update) {
-	const uid = update?.update_id;
-	if (typeof uid !== "number") return true;
-
-	if (uid <= (state.lastUpdateId ?? 0)) return false;
-
-	state.lastUpdateId = uid;
-	saveState();
-	return true;
-}
-
-bot.on("message", async (msg) => {
-	// node-telegram-bot-api передає update_id в msg.update_id
-	if (!shouldProcessUpdate(msg)) return;
-});
-
-bot.on("callback_query", async (q) => {
-	// callback_query теж має update_id
-	if (!shouldProcessUpdate(q)) return;
-
-	const chatId = q.message?.chat?.id;
-	if (!chatId) return;
-
-	await bot.answerCallbackQuery(q.id).catch(() => {});
-
-	if (q.data === "NOW_CHART") {
-		state.chatId = chatId;
-		saveState();
-		await sendChart(chatId, makeCaption("now_button"));
-	}
-});
-
+// handlers (те саме що було)
 bot.onText(/\/start/, async (msg) => {
-	if (!shouldProcessUpdate(msg)) return;
-
 	state.chatId = msg.chat.id;
 	saveState();
 
@@ -167,16 +131,12 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 bot.onText(/\/now/, async (msg) => {
-	if (!shouldProcessUpdate(msg)) return;
-
 	state.chatId = msg.chat.id;
 	saveState();
 	await sendChart(state.chatId, makeCaption("now_cmd"));
 });
 
 bot.onText(/\/status/, async (msg) => {
-	if (!shouldProcessUpdate(msg)) return;
-
 	const chatId = msg.chat.id;
 	await bot.sendMessage(
 		chatId,
@@ -185,12 +145,51 @@ bot.onText(/\/status/, async (msg) => {
 	);
 });
 
-// якщо chatId уже є в state.json — одразу шлемо після старту процесу
-sendCurrentChart("startup").catch((e) =>
-	console.error("startup send error:", e),
-);
+bot.on("callback_query", async (q) => {
+	const chatId = q.message?.chat?.id;
+	if (!chatId) return;
 
-// періодична перевірка
+	await bot.answerCallbackQuery(q.id).catch(() => {});
+
+	if (q.data === "NOW_CHART") {
+		state.chatId = chatId;
+		saveState();
+		await sendChart(chatId, makeCaption("now_button"));
+	}
+});
+
+// Express webhook server
+const app = express();
+app.use(express.json());
+
+const webhookPath = `/webhook/${BOT_TOKEN}`;
+
+// optional: verify secret header
+app.post(webhookPath, (req, res) => {
+	if (WEBHOOK_SECRET) {
+		const header = req.get("X-Telegram-Bot-Api-Secret-Token");
+		if (header !== WEBHOOK_SECRET) return res.sendStatus(401);
+	}
+
+	bot.processUpdate(req.body);
+	res.sendStatus(200);
+});
+
+// healthcheck
+app.get("/", (req, res) => res.status(200).send("ok"));
+
+const port = Number(process.env.PORT ?? 3000);
+app.listen(port, async () => {
+	const webhookUrl = `${PUBLIC_URL}${webhookPath}`;
+
+	// setWebhook: Telegram буде слати апдейти сюди [web:492]
+	const opts = WEBHOOK_SECRET ? { secret_token: WEBHOOK_SECRET } : undefined;
+	await bot.setWebHook(webhookUrl, opts);
+
+	console.log("Webhook set to:", webhookUrl);
+});
+
+// periodic check
 setInterval(() => {
 	tick().catch((e) => console.error("tick error:", e));
 }, INTERVAL_SECONDS * 1000);
