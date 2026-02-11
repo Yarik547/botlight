@@ -56,7 +56,7 @@ function makeCaption(kind) {
 	if (kind === "now_button") return `📍 На запит. ${p}`;
 	if (kind === "now_cmd") return `⌨️ /now. ${p}`;
 	if (kind === "changed") return `🔔 Є зміни. ${p}`;
-	return `${p}}`;
+	return `${p}\n\n @forlight213_bot}`;
 }
 
 async function downloadImage(url) {
@@ -126,7 +126,7 @@ bot.onText(/\/start/, async (msg) => {
 
   await bot.sendMessage(
     state.chatId,
-    `Підключено ✅\nНадсилаю графік далі - тільки коли він зміниться.`,
+    `Підключено ✅\nНадсилаю графік далі - тільки коли він зміниться.\n\n @forlight213_bot`,
     { disable_web_page_preview: true, ...mainKeyboard() },
   );
 
