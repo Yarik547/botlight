@@ -8,8 +8,8 @@ const IMAGE_URL = process.env.IMAGE_URL;
 const INTERVAL_SECONDS = Number(process.env.INTERVAL_SECONDS ?? 1800);
 const STATE_FILE = "./state.json";
 
-if (!BOT_TOKEN) throw new Error("Missing BOT_TOKEN in .env");
-if (!IMAGE_URL) throw new Error("Missing IMAGE_URL in .env");
+if (!BOT_TOKEN) throw new Error("Missing BOT_TOKEN in env");
+if (!IMAGE_URL) throw new Error("Missing IMAGE_URL in env");
 
 const bot = new TelegramBot(BOT_TOKEN, {
 	polling: { params: { allowed_updates: ["message", "callback_query"] } },
@@ -92,7 +92,7 @@ async function sendChart(chatId, caption) {
 async function sendCurrentChart(captionKind = "startup") {
 	if (!state.chatId) return;
 	const h = await sendChart(state.chatId, makeCaption(captionKind));
-	state.lastHash = h; // щоб не продублювало в tick()
+	state.lastHash = h;
 	saveState();
 }
 
@@ -142,11 +142,21 @@ bot.onText(/\/status/, async (msg) => {
 	);
 });
 
+// Дедуплікація callback’ів: Telegram може доставляти callback повторно, якщо клієнт не отримав відповідь вчасно [web:449].
+// У node-telegram-bot-api callback_query id — це q.id, його і використовуємо для answerCallbackQuery [web:453].
+const handledCallbackIds = new Set();
+
 bot.on("callback_query", async (q) => {
 	const chatId = q.message?.chat?.id;
 	if (!chatId) return;
 
-	await bot.answerCallbackQuery(q.id); // щоб кнопка “відпустила” loader [web:118]
+	// Завжди відповідаємо, щоб Telegram “відпустив” loader на кнопці [web:453].
+	await bot.answerCallbackQuery(q.id).catch(() => {});
+
+	// Якщо цей callback уже обробляли — не шлемо другий раз [web:449].
+	if (handledCallbackIds.has(q.id)) return;
+	handledCallbackIds.add(q.id);
+	setTimeout(() => handledCallbackIds.delete(q.id), 60_000);
 
 	if (q.data === "NOW_CHART") {
 		state.chatId = chatId;
