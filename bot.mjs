@@ -126,7 +126,7 @@ bot.onText(/\/start/, async (msg) => {
 
   await bot.sendMessage(
     state.chatId,
-    `Підключено ✅\nНадсилаю графік зараз і далі — тільки коли він зміниться.\n\nБот: https://t.me/${BOT_USERNAME}`,
+    `Підключено ✅\nНадсилаю графік далі - тільки коли він зміниться.`,
     { disable_web_page_preview: true, ...mainKeyboard() },
   );
 
