@@ -10,6 +10,9 @@ const INTERVAL_SECONDS = Number(process.env.INTERVAL_SECONDS ?? 1800);
 const PUBLIC_URL = process.env.PUBLIC_URL; // напр. https://xxxxx.up.railway.app
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET; // optional
 const STATE_FILE = "./state.json";
+const shareUrl =
+  "https://t.me/share/url?url=" + encodeURIComponent("https://t.me/LightWatcherBot") +
+  "&text=" + encodeURIComponent("Графік світла та сповіщення — LightWatcher");
 
 if (!BOT_TOKEN) throw new Error("Missing BOT_TOKEN in env");
 if (!IMAGE_URL) throw new Error("Missing IMAGE_URL in env");
@@ -61,7 +64,7 @@ function makeCaption(kind) {
 	if (kind === "now_button") return `📍 На запит. ${p}`;
 	if (kind === "now_cmd") return `⌨️ /now. ${p}`;
 	if (kind === "changed") return `🔔 Є зміни. ${p}`;
-	return `${p}}`;
+	return `${p}\n<a href="${shareUrl}">Поширити бота</a>`;
 }
 
 async function downloadImage(url) {
