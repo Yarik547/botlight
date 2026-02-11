@@ -1,26 +1,13 @@
 {
-	"name": "lightbot",
-	"version": "1.0.0",
-	"description": "",
-	"main": "index.js",
+	"name": "lightwatcher",
 	"type": "module",
 	"scripts": {
-		"start": "node bot.mjs"
+		"start": "node index.mjs"
 	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/Yarik547/botlight.git"
-	},
-	"keywords": [],
-	"author": "",
-	"license": "ISC",
-	"bugs": {
-		"url": "https://github.com/Yarik547/botlight/issues"
-	},
-	"homepage": "https://github.com/Yarik547/botlight#readme",
 	"dependencies": {
+		"canvas": "^3.2.0",
 		"dotenv": "^17.2.4",
-		"express": "^5.1.0",
+		"express": "^4.19.2",
 		"node-telegram-bot-api": "^0.67.0"
 	}
 }
