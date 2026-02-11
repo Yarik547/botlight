@@ -44,9 +44,6 @@ function pad2(n) {
 }
 
 function makeCaption(kind) {
-	const now = new Date();
-	const ts = `${pad2(now.getDate())}.${pad2(now.getMonth() + 1)}.${now.getFullYear()} ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-
 	const phrases = [
 		"Свіжак під’їхав.",
 		"Оновлення з мережі.",
@@ -60,11 +57,11 @@ function makeCaption(kind) {
 
 	const p = phrases[Math.floor(Math.random() * phrases.length)];
 
-	// if (kind === "startup") return `🚀 Старт. ${p}\n⏱ ${ts}`;
-	// if (kind === "now_button") return `📍 На запит. ${p}\n⏱ ${ts}`;
-	// if (kind === "now_cmd") return `⌨️ /now. ${p}\n⏱ ${ts}`;
-	// if (kind === "changed") return `🔔 Є зміни. ${p}\n⏱ ${ts}`;
-	return `${p}\n⏱ ${ts}`;
+	if (kind === "startup") return `🚀 Старт. ${p}\n⏱ ${ts}`;
+	if (kind === "now_button") return `📍 На запит. ${p}\n⏱ ${ts}`;
+	if (kind === "now_cmd") return `⌨️ /now. ${p}\n⏱ ${ts}`;
+	if (kind === "changed") return `🔔 Є зміни. ${p}\n⏱ ${ts}`;
+	return `${p}}`;
 }
 
 async function downloadImage(url) {
