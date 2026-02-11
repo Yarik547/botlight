@@ -61,7 +61,7 @@ function makeCaption(kind) {
   else if (kind === "now_cmd") head = `⌨️ /now. ${p}`;
   else if (kind === "changed") head = `🔔 Є зміни. ${p}`;
 
-  return `<b>Графік світла</b>\n${line1}\n\n<a href="${shareUrl}">Поширити LightWatcher</a>`;
+  `${head}\n\n<a href="${shareUrl}"><span style="text-transform: lowercase;">Поширити LightWatcher</span></a>`;
 
 }
 
