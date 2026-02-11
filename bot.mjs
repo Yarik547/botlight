@@ -15,7 +15,7 @@ const bot = new TelegramBot(BOT_TOKEN, {
 	polling: { params: { allowed_updates: ["message", "callback_query"] } },
 });
 
-let state = { chatId: null, lastHash: null };
+let state = { chatId: null, lastHash: null, lastUpdateId: 0 };
 
 if (fs.existsSync(STATE_FILE)) {
 	try {
@@ -114,7 +114,46 @@ async function tick() {
 	}
 }
 
+/**
+ * Дедуплікація апдейтів.
+ * update_id — це інкрементний id апдейта, і якщо після рестарту/overlap апдейт приїде ще раз,
+ * ми просто ігноруємо його (обробляємо тільки якщо він новіший за збережений). [web:154]
+ */
+function shouldProcessUpdate(update) {
+	const uid = update?.update_id;
+	if (typeof uid !== "number") return true;
+
+	if (uid <= (state.lastUpdateId ?? 0)) return false;
+
+	state.lastUpdateId = uid;
+	saveState();
+	return true;
+}
+
+bot.on("message", async (msg) => {
+	// node-telegram-bot-api передає update_id в msg.update_id
+	if (!shouldProcessUpdate(msg)) return;
+});
+
+bot.on("callback_query", async (q) => {
+	// callback_query теж має update_id
+	if (!shouldProcessUpdate(q)) return;
+
+	const chatId = q.message?.chat?.id;
+	if (!chatId) return;
+
+	await bot.answerCallbackQuery(q.id).catch(() => {});
+
+	if (q.data === "NOW_CHART") {
+		state.chatId = chatId;
+		saveState();
+		await sendChart(chatId, makeCaption("now_button"));
+	}
+});
+
 bot.onText(/\/start/, async (msg) => {
+	if (!shouldProcessUpdate(msg)) return;
+
 	state.chatId = msg.chat.id;
 	saveState();
 
@@ -128,41 +167,22 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 bot.onText(/\/now/, async (msg) => {
+	if (!shouldProcessUpdate(msg)) return;
+
 	state.chatId = msg.chat.id;
 	saveState();
 	await sendChart(state.chatId, makeCaption("now_cmd"));
 });
 
 bot.onText(/\/status/, async (msg) => {
+	if (!shouldProcessUpdate(msg)) return;
+
 	const chatId = msg.chat.id;
 	await bot.sendMessage(
 		chatId,
 		`chatId: ${state.chatId ?? "не заданий"}\ninterval: ${INTERVAL_SECONDS}s\nurl: ${IMAGE_URL}`,
 		mainKeyboard(),
 	);
-});
-
-// Дедуплікація callback’ів: Telegram може доставляти callback повторно, якщо клієнт не отримав відповідь вчасно [web:449].
-// У node-telegram-bot-api callback_query id — це q.id, його і використовуємо для answerCallbackQuery [web:453].
-const handledCallbackIds = new Set();
-
-bot.on("callback_query", async (q) => {
-	const chatId = q.message?.chat?.id;
-	if (!chatId) return;
-
-	// Завжди відповідаємо, щоб Telegram “відпустив” loader на кнопці [web:453].
-	await bot.answerCallbackQuery(q.id).catch(() => {});
-
-	// Якщо цей callback уже обробляли — не шлемо другий раз [web:449].
-	if (handledCallbackIds.has(q.id)) return;
-	handledCallbackIds.add(q.id);
-	setTimeout(() => handledCallbackIds.delete(q.id), 60_000);
-
-	if (q.data === "NOW_CHART") {
-		state.chatId = chatId;
-		saveState();
-		await sendChart(chatId, makeCaption("now_button"));
-	}
 });
 
 // якщо chatId уже є в state.json — одразу шлемо після старту процесу
