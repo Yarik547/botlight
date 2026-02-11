@@ -15,4 +15,4 @@ export function parseScheduleFromRawMobileHtml(rawMobileHtml) {
     if (out[g]) out[g].push([a, b]);
   }
   return out;
-}[file:5]
+}
