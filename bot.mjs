@@ -52,11 +52,11 @@ function makeCaption(kind) {
 
 	const p = phrases[Math.floor(Math.random() * phrases.length)];
 
-	if (kind === "startup") return `🚀 Старт. ${p}`;
-	if (kind === "now_button") return `📍 На запит. ${p}`;
-	if (kind === "now_cmd") return `⌨️ /now. ${p}`;
-	if (kind === "changed") return `🔔 Є зміни. ${p}`;
-	return `${p}\n\n @forlight213_bot}`;
+	if (kind === "startup") return `🚀 Старт. ${p}\n\n @forlight213_bot}`;
+	if (kind === "now_button") return `📍 На запит. ${p}\n\n @forlight213_bot}`;
+	if (kind === "now_cmd") return `⌨️ /now. ${p}\n\n @forlight213_bot}`;
+	if (kind === "changed") return `🔔 Є зміни. ${p}\n\n @forlight213_bot}`;
+	return `${p}`;
 }
 
 async function downloadImage(url) {
