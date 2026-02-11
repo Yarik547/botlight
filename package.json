@@ -1,0 +1,26 @@
+{
+	"name": "lightbot",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"start": "node bot.mjs"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Yarik547/botlight.git"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"type": "module",
+	"bugs": {
+		"url": "https://github.com/Yarik547/botlight/issues"
+	},
+	"homepage": "https://github.com/Yarik547/botlight#readme",
+	"dependencies": {
+		"dotenv": "^17.2.4",
+		"node-telegram-bot-api": "^0.67.0"
+	}
+}
