@@ -52,10 +52,10 @@ function makeCaption(kind) {
 
 	const p = phrases[Math.floor(Math.random() * phrases.length)];
 
-	if (kind === "startup") return `🚀 Старт. ${p}\n\n @forlight213_bot`;
-	if (kind === "now_button") return `📍 На запит. ${p}\n\n @forlight213_bot`;
-	if (kind === "now_cmd") return `⌨️ /now. ${p}\n\n @forlight213_bot`;
-	if (kind === "changed") return `🔔 Є зміни. ${p}\n\n @forlight213_bot`;
+	if (kind === "startup") return `🚀 Старт. ${p}\n\n@forlight213_bot`;
+	if (kind === "now_button") return `📍 На запит. ${p}\n\n@forlight213_bot`;
+	if (kind === "now_cmd") return `⌨️ /now. ${p}\n\n@forlight213_bot`;
+	if (kind === "changed") return `🔔 Є зміни. ${p}\n\n@forlight213_bot`;
 	return `${p}`;
 }
 
@@ -126,7 +126,7 @@ bot.onText(/\/start/, async (msg) => {
 
   await bot.sendMessage(
     state.chatId,
-    `Підключено ✅\nНадсилаю графік далі - тільки коли він зміниться.\n\n @forlight213_bot`,
+    `Підключено ✅\nНадсилаю графік далі - тільки коли він зміниться.\n\n@forlight213_bot`,
     { disable_web_page_preview: true, ...mainKeyboard() },
   );
 
